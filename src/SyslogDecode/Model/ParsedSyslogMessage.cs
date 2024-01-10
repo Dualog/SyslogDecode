@@ -25,6 +25,10 @@ namespace SyslogDecode.Model
         /// each having a list of name-value pairs. </summary>
         /// <remarks>Keys inside element can be repeated (see RFC 5424, example with IP parameter), so element value is a list of pairs, not dictionary.</remarks>
         public IDictionary<string, IList<NameValuePair>> StructuredData5424 = new Dictionary<string, IList<NameValuePair>>();
+        
+        /// <summary>
+        /// Stores raw Rcf5424 structured data representation
+        /// </summary>
         public string RawStructuredData5424 = string.Empty;
 
         /// <summary>Data extracted from text message sections using various extraction methods, mostly pattern-matching. Keys/names can be repeated, 
