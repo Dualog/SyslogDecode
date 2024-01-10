@@ -27,7 +27,7 @@ namespace SyslogDecode.Parsing
             try
             {
                 entry.Header = this.ParseHeader(ctx);
-                this.ParseStructuredData(ctx);
+                entry.RawStructuredData5424 = this.ParseStructuredData(ctx);
                 entry.Message = this.ParseMessage(ctx);
                 return true; 
             }
@@ -49,14 +49,14 @@ namespace SyslogDecode.Parsing
             return header; 
         }
 
-        private void ParseStructuredData(ParserContext ctx)
+        private string ParseStructuredData(ParserContext ctx)
         {
             ctx.SkipSpaces();
 
             if (ctx.Current == SyslogChars.NilChar)
             {
                 ctx.Position++;
-                return; 
+                return SyslogChars.NilChar.ToString(); 
             }
 
             var data = ctx.ParsedMessage.StructuredData5424;
@@ -66,22 +66,33 @@ namespace SyslogDecode.Parsing
                 {
                     // do not report it as an error, some messages out there are a bit malformed
                     // ctx.AddError("Expected [ for structured data.");
-                    return; 
+                    return SyslogChars.NilChar.ToString(); 
                 }
+
+                var structuredDataStartIndex = ctx.Position;
+                
                 // start parsing elements
                 while(!ctx.Eof())
                 {
                     var elem = ParseElement(ctx);
                     if (elem == null)
                     {
-                        return;
+                        return ctx.Position == structuredDataStartIndex ?
+                            SyslogChars.NilChar.ToString() :
+                            ctx.Text.Substring(structuredDataStartIndex, ctx.Position - structuredDataStartIndex)
+                                .Trim(SyslogChars.Space);
                     }
                     data[elem.Item1] = elem.Item2; 
                 }
 
+                return ctx.Position == structuredDataStartIndex ?
+                    SyslogChars.NilChar.ToString() :
+                    ctx.Text.Substring(structuredDataStartIndex, ctx.Position - structuredDataStartIndex)
+                        .Trim(SyslogChars.Space);
             } catch (Exception ex)
             {
                 ctx.AddError(ex.Message);
+                return string.Empty;
             }
         }
 
@@ -95,7 +106,22 @@ namespace SyslogDecode.Parsing
             var elemName = ctx.ReadWord();
             ctx.SkipSpaces();
             var paramList = new List<NameValuePair>();
-            var elem = new Tuple<string, List<NameValuePair>>(elemName, paramList);
+            Tuple<string, List<NameValuePair>> elem;
+            
+            if (ctx.Current != SyslogChars.EQ)
+            {
+                elem = new Tuple<string, List<NameValuePair>>(elemName, paramList);    
+            }
+            else
+            {
+                elem = new Tuple<string, List<NameValuePair>>(string.Empty, paramList);
+                ctx.ReadSymbol('=');
+                var paramValue = ctx.ReadQuotedString();
+                var prm = new NameValuePair() { Name = elemName, Value = paramValue };
+                paramList.Add(prm);
+                ctx.SkipSpaces();
+            }
+            
             while (ctx.Current != SyslogChars.Rbr)
             {
                 var paramName = ctx.ReadWord();
