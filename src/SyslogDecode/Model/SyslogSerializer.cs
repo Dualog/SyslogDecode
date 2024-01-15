@@ -80,7 +80,6 @@ namespace SyslogDecode.Model
             if (structuredData == null || structuredData.Count == 0)
             {
                 writer.Append(NilChar);
-                writer.Append(Space);
                 return; 
             }
 
@@ -90,12 +89,17 @@ namespace SyslogDecode.Model
                 var paramList = de.Value; 
                 writer.Append(Lbr);
                 writer.Append(elemName);
-                foreach(var prm in paramList)
+
+                for (var i = 0; i < paramList.Count; i++)
                 {
-                    writer.Append(Space);
-                    writer.Append(prm.Name);
+                    if (i != 0 || !string.IsNullOrEmpty(elemName))
+                    {
+                        writer.Append(Space);
+                    }
+
+                    writer.Append(paramList[i].Name);
                     writer.Append('=');
-                    var prmValue = EscapeParamValue(prm.Value);
+                    var prmValue = EscapeParamValue(paramList[i].Value);
                     writer.Append(DQuote);
                     writer.Append(prmValue);
                     writer.Append(DQuote);
